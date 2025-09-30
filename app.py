@@ -27,29 +27,22 @@ if csv_file is not None:
     else:
         st.sidebar.success(f"Liste chargée. Nombre d'enregistrements : {len(df)}")
 
-        # Recherche utilisateur
-        query = st.text_input("Entrez numéro d'adhérent / nom complet / courriel", "")
-        if st.button("Vérifier"):
-            q = query.strip().lower()
-            if q == "":
-                st.info("Veuillez entrer une valeur pour vérifier.")
-            else:
-                # Recherche flexible
                 # Recherche utilisateur
-query = st.text_input("Entre ton nom pour vérifier votre éligibilité", "")
-if st.button("Vérifier"):
-    q = query.strip().lower()
-    if q == "":
-        st.info("Veuillez entrer une valeur pour vérifier.")
-    else:
-        # Recherche uniquement dans la colonne des noms
-        mask = df["Nom / Last Name"].astype(str).str.lower().str.contains(q)
-
-        results = df[mask]
-        if results.empty:
-            st.error("Aucun enregistrement correspondant trouvé. Si tu penses que c'est une erreur, contacte le secrétariat.")
+else:
+    query = st.text_input("Entre ton nom pour vérifier votre éligibilité", "")
+    if st.button("Vérifier"):
+        q = query.strip().lower()
+        if q == "":
+            st.info("Veuillez entrer une valeur pour vérifier.")
         else:
-            st.success(f"{len(results)} enregistrement(s) trouvé(s).")
-            st.table(results.head(10))
+            # Recherche uniquement dans la colonne des noms
+            mask = df["Nom / Last Name"].astype(str).str.lower().str.contains(q)
+
+            results = df[mask]
+            if results.empty:
+                st.error("Aucun enregistrement correspondant trouvé. Si tu penses que c'est une erreur, contacte le secrétariat.")
+            else:
+                st.success(f"{len(results)} enregistrement(s) trouvé(s).")
+                st.table(results.head(10))
 else:
     st.info("Aucun fichier chargé. Demande au secrétariat d'uploader le fichier CSV via la barre latérale.")
