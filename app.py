@@ -4,7 +4,7 @@ import pandas as pd
 
 st.set_page_config(page_title="Vérification Liste Électorale", layout="centered")
 st.title("Vérification de l'inscription sur la liste électorale")
-st.write("Entre ton nom pour vérifier votre éligibilité - Enter your last name to verify you are registered to vote")
+st.write("Entre ton nom pour vérifier votre éligibilité - Enter your last name to see if you are registered to vote")
 
 # Upload CSV (admin)
 st.sidebar.header("Administration")
