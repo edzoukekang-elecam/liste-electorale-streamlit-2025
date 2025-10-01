@@ -1,42 +1,59 @@
-# app.py
 import streamlit as st
 import pandas as pd
+from rapidfuzz import fuzz, process
+import unidecode
 
-st.set_page_config(page_title="Vérification Liste Électorale", layout="centered")
-st.title("Vérification de l'inscription sur la liste électorale")
-st.write("Entre ton nom pour vérifier votre éligibilité - Enter your last name to verify you are registered to vote")
+# -------------------------------
+# Charger le fichier CSV déjà présent dans l'app
+# -------------------------------
+@st.cache_data
+def load_data():
+    # Remplace "latin1" par "utf-8" si ton CSV est UTF-8
+    return pd.read_csv("liste_electorale.csv", encoding="latin1")
 
-# Upload CSV (barre latérale)
-st.sidebar.header("Administration")
-csv_file = st.sidebar.file_uploader("Uploader la liste électorale (CSV)", type=["csv"])
+data = load_data()
 
-if csv_file is not None:
-    try:
-        df = pd.read_csv(csv_file, dtype=str, sep=";")  # point-virgule pour CSV français
-    except Exception as e:
-        st.sidebar.error(f"Erreur lecture CSV: {e}")
-        st.stop()
+# -------------------------------
+# Titre de l'application
+# -------------------------------
+st.title("📋 Vérification de l'inscription sur la liste électorale")
 
-    # Vérifier que la colonne essentielle est présente
-    if "Nom / Last Name" not in df.columns:
-        st.error("Le CSV doit contenir la colonne : Nom / Last Name")
+# -------------------------------
+# Champ de recherche
+# -------------------------------
+nom = st.text_input("Entrez votre nom de famille (Last Name) :")
+
+if st.button("Vérifier"):
+    if nom.strip() == "":
+        st.warning("Veuillez entrer un nom avant de vérifier.")
     else:
-        # Zone de recherche utilisateur
-        query = st.text_input("Nom complet")
-        if st.button("Vérifier"):
-            q = query.strip().lower()
-            if q == "":
-                st.info("Veuillez entrer un nom pour vérifier.")
-            else:
-                # Recherche uniquement dans la colonne Nom / Last Name
-                mask = df["Nom / Last Name"].astype(str).str.lower().str.contains(q)
-                results = df[mask]
+        # Normalisation du nom saisi et de la colonne Nom
+        nom_saisi = unidecode.unidecode(nom.lower().strip())
+        data["Nom_normalise"] = data["Nom"].apply(lambda x: unidecode.unidecode(str(x).lower().strip()))
 
-                if results.empty:
-                    st.error("Aucun enregistrement correspondant trouvé. Si tu penses que c'est une erreur, contacte le secrétariat.")
-                else:
-                    st.success(f"{len(results)} enregistrement(s) trouvé(s).")
-                    st.table(results.head(10))
+        # -------------------------------
+        # 1. Recherche exacte
+        # -------------------------------
+        exact_matches = [n for n in data["Nom"] if unidecode.unidecode(n.lower().strip()) == nom_saisi]
 
-else:
-    st.info("Aucun fichier chargé. Demande au secrétariat d'uploader le fichier CSV via la barre latérale.")
+        # -------------------------------
+        # 2. Recherche partielle
+        # -------------------------------
+        partial_matches = [n for n in data["Nom"] if nom_saisi in unidecode.unidecode(n.lower().strip())]
+
+        # -------------------------------
+        # 3. Recherche fuzzy (tolérance aux fautes)
+        # -------------------------------
+        results = process.extract(nom_saisi, data["Nom"].tolist(), scorer=fuzz.partial_ratio, limit=50)
+        fuzzy_matches = [r[0] for r in results if r[1] >= 70]
+
+        # -------------------------------
+        # Fusionner tous les résultats sans doublons
+        # -------------------------------
+        all_matches = list(set(exact_matches + partial_matches + fuzzy_matches))
+
+        if all_matches:
+            st.success(f"✅ {len(all_matches)} résultat(s) trouvé(s) pour : {nom}")
+            st.dataframe(pd.DataFrame(all_matches, columns=["Nom"]))
+        else:
+            st.error("❌ Aucun résultat trouvé. Vérifiez l'orthographe ou contactez le secrétariat.")
